@@ -2,12 +2,12 @@ import { LocalStorageConstants, LocalStorageUtils, URLUtils } from '@deriv-com/u
 import { isStaging } from '../url/helpers';
 
 export const APP_IDS = {
-    LOCALHOST: 36300,
+    LOCALHOST: 66622,
     TMP_STAGING: 64584,
     STAGING: 29934,
     STAGING_BE: 29934,
     STAGING_ME: 29934,
-    PRODUCTION: 66622,
+    PRODUCTION: 65555,
     PRODUCTION_BE: 65556,
     PRODUCTION_ME: 65557,
 };
@@ -20,7 +20,7 @@ export const domain_app_ids = {
     'staging-dbot.deriv.com': APP_IDS.STAGING,
     'staging-dbot.deriv.be': APP_IDS.STAGING_BE,
     'staging-dbot.deriv.me': APP_IDS.STAGING_ME,
-    'd-mecca.com': APP_IDS.PRODUCTION,
+    'dbot.deriv.com': APP_IDS.PRODUCTION,
     'dbot.deriv.be': APP_IDS.PRODUCTION_BE,
     'dbot.deriv.me': APP_IDS.PRODUCTION_ME,
 };
@@ -46,10 +46,22 @@ export const isLocal = () => /localhost(:\d+)?$/i.test(window.location.hostname)
 
 const getDefaultServerURL = () => {
     if (isTestLink()) {
-        return 'ws.deriv.ws';
+        return 'ws.derivws.com';
     }
 
-    const server_url = 'ws.deriv.ws';
+    let active_loginid_from_url;
+    const search = window.location.search;
+    if (search) {
+        const params = new URLSearchParams(document.location.search.substring(1));
+        active_loginid_from_url = params.get('acct1');
+    }
+
+    const loginid = window.localStorage.getItem('active_loginid') ?? active_loginid_from_url;
+    const is_real = loginid && !/^(VRT|VRW)/.test(loginid);
+
+    const server = is_real ? 'green' : 'blue';
+    const server_url = `${server}.derivws.com`;
+
     return server_url;
 };
 
@@ -89,6 +101,7 @@ export const getSocketURL = () => {
     if (local_storage_server_url) return local_storage_server_url;
 
     const server_url = getDefaultServerURL();
+
     return server_url;
 };
 
@@ -103,7 +116,7 @@ export const checkAndSetEndpointFromUrl = () => {
             url_params.delete('qa_server');
             url_params.delete('app_id');
 
-            if (/^(^(www\.)?qa[0-9]{1,4}\.deriv.dev|(.*)\.deriv.ws)$/.test(qa_server) && /^[0-9]+$/.test(app_id)) {
+            if (/^(^(www\.)?qa[0-9]{1,4}\.deriv.dev|(.*)\.derivws\.com)$/.test(qa_server) && /^[0-9]+$/.test(app_id)) {
                 localStorage.setItem('config.app_id', app_id);
                 localStorage.setItem('config.server_url', qa_server);
             }
@@ -122,8 +135,11 @@ export const checkAndSetEndpointFromUrl = () => {
     return false;
 };
 
-export const clearLocalStorage = () => {
-    localStorage.clear();
+export const getDebugServiceWorker = () => {
+    const debug_service_worker_flag = window.localStorage.getItem('debug_service_worker');
+    if (debug_service_worker_flag) return !!parseInt(debug_service_worker_flag);
+
+    return false;
 };
 
 export const generateOAuthURL = () => {
@@ -133,7 +149,7 @@ export const generateOAuthURL = () => {
     const configured_server_url = (LocalStorageUtils.getValue(LocalStorageConstants.configServerURL) ||
         original_url.hostname) as string;
 
-    const valid_server_urls = ['ws.deriv.ws'];
+    const valid_server_urls = ['green.derivws.com', 'red.derivws.com', 'blue.derivws.com'];
     if (!valid_server_urls.includes(configured_server_url)) {
         original_url.hostname = configured_server_url;
     }
